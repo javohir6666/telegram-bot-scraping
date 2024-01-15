@@ -21,6 +21,7 @@ dp = Dispatcher(bot)
 async def on_startup(_):
     # schedule_messages()
     print('Бот был успешно запушен!')
+    schedul()
 
 
 
@@ -105,7 +106,6 @@ def schedul():
     
 if __name__ == '__main__':
     executor.start_polling(dp, on_startup=on_startup,skip_updates=True)
-    schedul()
 
     
     
