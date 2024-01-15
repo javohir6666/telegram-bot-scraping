@@ -3,10 +3,11 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemo
 from aiogram.dispatcher.filters import Text
 from aiogram.utils.markdown import hlink
 from scraping_news import get_football, get_uzb, get_euro
-import json, time
+import json
 from celery import Celery
 from datetime import datetime, timedelta
-import schedule
+import time
+import asyncio
 
 TOKEN_API = '6322573292:AAFEFo68GPPbzqOHQVEduL5oZ7l5K-QxhIo'
 
@@ -19,9 +20,7 @@ bot = Bot(TOKEN_API, parse_mode=types.ParseMode.HTML)
 dp = Dispatcher(bot)
 
 async def on_startup(_):
-    # schedule_messages()
     print('Бот был успешно запушен!')
-    schedul()
 
 
 
@@ -38,7 +37,7 @@ async def start_command(message: types.Message):
                          parse_mode="HTML",
                          reply_markup=keyboard)
     await message.delete()
-    print(message)
+    print(message.chat.id)
     
     
 @dp.message_handler(Text(equals="Futbol yangiliklari ⚽️"))
@@ -84,28 +83,33 @@ async def get_euro_news(message:types.Message):
         card = f"{hlink(item.get('title'), item.get('url'))}\n "
 
         await message.answer(card)
-
+    
+        
+        
+# Определение задачи Celery
 @app.task
-def send_message():
-    chat_id = '1690731346'
-    message = 'YOUR_MESSAGE_HERE'
-    bot.send_message(chat_id=chat_id, text=message)
-def schedul():    
-    schedule.every(3).seconds.do(send_message.delay)
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
-    
-    
-# @app.task
-# def schedule_messages():
-#     print('redis working!')
-#     send_message.apply_async(eta=datetime.now() + timedelta(seconds=10))
-#     send_message.apply_async(eta=datetime.now() + timedelta(hours=7, seconds=10))
+def send_scheduled_message(chat_id, text, delay):
+    asyncio.run(schedule_message(chat_id, text, delay))
 
+
+# Отправка запланированного сообщения
+async def schedule_message(chat_id, text, delay):
+    await asyncio.sleep(delay)
+    await bot.send_message(chat_id, text)
+    
+    
+# Обработчик команды /schedule
+@dp.message_handler(commands=['schedule'])
+async def schedule(message: types.Message):
+    chat_id = "1690731346"
+    text = "Your scheduled message"
+    delay = 5  # 5 minutes delay (in seconds)
+    send_scheduled_message.apply_async((chat_id, text, delay))
+    print('schedule working')
     
 if __name__ == '__main__':
     executor.start_polling(dp, on_startup=on_startup,skip_updates=True)
+    
 
     
     
