@@ -101,11 +101,10 @@ async def schedule_message(chat_id, text, delay):
 # Обработчик команды /schedule
 @dp.message_handler(commands=['schedule'])
 async def schedule(message: types.Message):
-    chat_id = "1690731346"
+    chat_id = message.chat.id
     text = "Your scheduled message"
     delay = 5  # 5 minutes delay (in seconds)
     send_scheduled_message.apply_async((chat_id, text, delay))
-    print('schedule working')
     
 if __name__ == '__main__':
     executor.start_polling(dp, on_startup=on_startup,skip_updates=True)
