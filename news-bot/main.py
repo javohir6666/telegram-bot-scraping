@@ -25,7 +25,6 @@ async def set_webhook():
     
 async def on_startup(_):
     await set_webhook()
-    print('Бот был успешно запушен!')
 
 async def handle_webhook(request):
     url = str(request.url)
@@ -113,15 +112,15 @@ async def get_euro_news(message:types.Message):
 @dp.message_handler(Text(equals='Avtomatik qabul qilish 🕰'))
 async def schedule(message: types.Message):
     chat_id = message.chat.id
-    delay = 5 # 5 seconds delay (adjust as needed)
-    # await get_euro_news(message)
-    # await get_uzb_news(message)
-    await get_football_news(message)
-    text='asd'
+    delay = 600 # 600 seconds delay (adjust as needed)
+    text=''
     await bot.send_message(chat_id=chat_id, text=f"Sizga har {delay} sekundda habarlarni avtomatik jo\'natiladi!.")
 
     while True:
         await asyncio.sleep(delay)
+        await get_euro_news(message)
+        await get_uzb_news(message)
+        await get_football_news(message)
         await bot.send_message(chat_id, text)
         send_scheduled_message.apply_async((chat_id, text, delay), countdown=delay)
 
