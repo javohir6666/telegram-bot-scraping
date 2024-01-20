@@ -3,6 +3,7 @@ from aiogram import Bot, Dispatcher, types, executor
 from aiogram.dispatcher.filters import Text
 from aiogram.utils.markdown import hlink
 from celery import Celery
+from aiogram.dispatcher.webhook import get_new_configured_app
 from aiohttp import web
 import json
 from scraping_news import get_euro, get_football, get_uzb
@@ -16,8 +17,9 @@ app = web.Application()
 
 webhook_path = f'/{TOKEN_API}'
 
+# started webhook section
 async def set_webhook():
-    webhook_uri = f'https://8a13-213-230-116-150.ngrok-free.app{webhook_path}'
+    webhook_uri = f'https://7cb6-213-230-116-150.ngrok-free.app{webhook_path}'
     await bot.set_webhook(webhook_uri)
     
     
@@ -31,16 +33,15 @@ async def handle_webhook(request):
     token = url[index+1:]
     
     if token == TOKEN_API:
-        update = types.Update(**await request.jon())
+        update = types.Update(**await request.json())
         await dp.process_update(update)
         
         return web.Response()
     
     else:
         return web.Response(status=403)
-
+# end webhook section
 app.router.add_post(f'/{TOKEN_API}', handle_webhook)
-
 
 # Celery configuration
 app_celery = Celery('tasks', broker='redis://localhost:6379/0')
@@ -112,23 +113,33 @@ async def get_euro_news(message:types.Message):
 @dp.message_handler(Text(equals='Avtomatik qabul qilish 🕰'))
 async def schedule(message: types.Message):
     chat_id = message.chat.id
-    text = "Your scheduled message"
-    delay = 15 # 5 seconds delay (adjust as needed)
-    await get_euro_news(message)
-    await get_uzb_news(message)
+    delay = 5 # 5 seconds delay (adjust as needed)
+    # await get_euro_news(message)
+    # await get_uzb_news(message)
     await get_football_news(message)
+    text='asd'
     await bot.send_message(chat_id=chat_id, text=f"Sizga har {delay} sekundda habarlarni avtomatik jo\'natiladi!.")
 
     while True:
         await asyncio.sleep(delay)
         await bot.send_message(chat_id, text)
+        send_scheduled_message.apply_async((chat_id, text, delay), countdown=delay)
 
-# Start the bot
+async def on_shutdown(app):
+    """
+    Graceful shutdown. This method is recommended by aiohttp docs.
+    """
+    # Remove webhook.
+    await bot.delete_webhook()
 
+    # Close Redis connection.
+    await dp.storage.close()
+    await dp.storage.wait_closed()
 
 if __name__ == '__main__':
-    # executor.start_polling(dp, on_startup=on_startup,skip_updates=True)
+    app = get_new_configured_app(dispatcher=dp, path=webhook_path)
     app.on_startup.append(on_startup)
+    app.on_shutdown.append(on_shutdown)
     
     web.run_app(
         app,

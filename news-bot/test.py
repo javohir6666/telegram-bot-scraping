@@ -14,7 +14,7 @@ app = web.Application()
 webhook_path = f'/{TOKEN_API}'
 
 async def set_webhook():
-    webhook_uri = f'https://8a13-213-230-116-150.ngrok-free.app{webhook_path}'
+    webhook_uri = f'https://d703-213-230-116-150.ngrok-free.app{webhook_path}'
     await bot.set_webhook(
         webhook_uri
     )
