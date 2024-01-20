@@ -3,6 +3,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemo
 from aiogram.dispatcher.filters import Text
 from aiogram.utils.markdown import hlink
 from scraping_news import get_football, get_uzb, get_euro
+from aiohttp import web
 import json
 from celery import Celery
 from datetime import datetime, timedelta
@@ -18,11 +19,35 @@ HELP_COMMAND = """
 app = Celery('tasks', broker='redis://localhost:6379/0')
 bot = Bot(TOKEN_API, parse_mode=types.ParseMode.HTML)
 dp = Dispatcher(bot)
+app = web.Application()
 
+webhook_path = f'/{TOKEN_API}'
+
+async def set_webhook():
+    webhook_uri = f'https://8a13-213-230-116-150.ngrok-free.app{webhook_path}'
+    await bot.set_webhook(webhook_uri)
+    
+    
 async def on_startup(_):
+    await set_webhook()
     print('Бот был успешно запушен!')
 
-
+async def handle_webhook(request):
+    url = str(request.url)
+    index = url.rfind('/')
+    token = url[index+1:]
+    
+    if token == TOKEN_API:
+        request_data = await request.json()
+        update = types.Update(**request_data)
+        await dp.process_update(update)
+        
+        return web.Response()
+    
+    else:
+        return web.Response(status=403)
+    
+    
 
 @dp.message_handler(commands=['help'])
 async def help_command(message: types.Message):
@@ -106,9 +131,18 @@ async def schedule(message: types.Message):
     await bot.send_message(chat_id=chat_id, text=text)
     send_scheduled_message.apply_async((chat_id, text, delay), countdown=delay)
 
+
+app.router.add_post(f'/{TOKEN_API}', handle_webhook)
+
+
 if __name__ == '__main__':
     executor.start_polling(dp, on_startup=on_startup,skip_updates=True)
     
+    web.run_app(
+        app,
+        host='0.0.0.0',
+        port='8080'
+    )
 
     
     

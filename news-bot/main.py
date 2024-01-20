@@ -1,5 +1,4 @@
 # Import necessary libraries
-import datetime
 from aiogram import Bot, Dispatcher, types, executor
 from aiogram.dispatcher.filters import Text
 from aiogram.utils.markdown import hlink
