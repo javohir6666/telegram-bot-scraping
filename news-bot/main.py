@@ -3,6 +3,7 @@ from aiogram import Bot, Dispatcher, types, executor
 from aiogram.dispatcher.filters import Text
 from aiogram.utils.markdown import hlink
 from celery import Celery
+from aiohttp import web
 import json
 from scraping_news import get_euro, get_football, get_uzb
 import asyncio
@@ -11,18 +12,44 @@ import asyncio
 TOKEN_API = '6322573292:AAFEFo68GPPbzqOHQVEduL5oZ7l5K-QxhIo'
 bot = Bot(TOKEN_API, parse_mode=types.ParseMode.HTML)
 dp = Dispatcher(bot)
+app = web.Application()
+
+webhook_path = f'/{TOKEN_API}'
+
+async def set_webhook():
+    webhook_uri = f'https://8a13-213-230-116-150.ngrok-free.app{webhook_path}'
+    await bot.set_webhook(webhook_uri)
+    
+    
+async def on_startup(_):
+    await set_webhook()
+    print('Бот был успешно запушен!')
+
+async def handle_webhook(request):
+    url = str(request.url)
+    index = url.rfind('/')
+    token = url[index+1:]
+    
+    if token == TOKEN_API:
+        update = types.Update(**await request.jon())
+        await dp.process_update(update)
+        
+        return web.Response()
+    
+    else:
+        return web.Response(status=403)
+
+app.router.add_post(f'/{TOKEN_API}', handle_webhook)
+
 
 # Celery configuration
-app = Celery('tasks', broker='redis://localhost:6379/0')
+app_celery = Celery('tasks', broker='redis://localhost:6379/0')
 
 # Command constants
 HELP_COMMAND = "/help - список команд\n/start - начат работу с ботом"
-
-async def on_startup(_):
-    print('Бот был успешно запушен!')
-    
+   
 # Celery task for sending scheduled messages
-@app.task
+@app_celery.task
 async def send_scheduled_message(chat_id, text, delay):
     await asyncio.sleep(delay)
     await bot.send_message(chat_id, text)
@@ -97,6 +124,14 @@ async def schedule(message: types.Message):
         await bot.send_message(chat_id, text)
 
 # Start the bot
+
+
 if __name__ == '__main__':
-    from aiogram import executor
-    executor.start_polling(dp, on_startup=on_startup, skip_updates=True)
+    # executor.start_polling(dp, on_startup=on_startup,skip_updates=True)
+    app.on_startup.append(on_startup)
+    
+    web.run_app(
+        app,
+        host='0.0.0.0',
+        port=8080
+    )

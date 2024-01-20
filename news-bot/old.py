@@ -38,8 +38,7 @@ async def handle_webhook(request):
     token = url[index+1:]
     
     if token == TOKEN_API:
-        request_data = await request.json()
-        update = types.Update(**request_data)
+        update = types.Update(**await request.jon())
         await dp.process_update(update)
         
         return web.Response()
@@ -136,7 +135,8 @@ app.router.add_post(f'/{TOKEN_API}', handle_webhook)
 
 
 if __name__ == '__main__':
-    executor.start_polling(dp, on_startup=on_startup,skip_updates=True)
+    # executor.start_polling(dp, on_startup=on_startup,skip_updates=True)
+    app.on_startup.append(on_startup)
     
     web.run_app(
         app,
